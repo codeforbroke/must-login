@@ -1,0 +1,64 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create release directory
+        run: mkdir -p release/must-login
+
+      - name: Copy plugin files
+        run: |
+          rsync -av --exclude='.wp-env.json' --exclude='.git' --exclude='.github' --exclude='release' . release/must-login/
+
+      - name: Create zip file
+        run: |
+          cd release
+          zip -r must-login-${{ steps.get_version.outputs.VERSION }}.zip must-login/
+          cd ..
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Must Login ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            WordPress Plugin Release ${{ steps.get_version.outputs.VERSION }}
+
+            ## Installation
+            1. Download the `must-login-${{ steps.get_version.outputs.VERSION }}.zip` file below
+            2. In WordPress admin, go to Plugins → Add New → Upload Plugin
+            3. Upload the zip file and activate
+
+            ## What's Included
+            - Plugin core file (must-login.php)
+            - Assets directory (CSS and JavaScript)
+            - Documentation (readme.txt)
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/must-login-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_name: must-login-${{ steps.get_version.outputs.VERSION }}.zip
+          asset_content_type: application/zip
