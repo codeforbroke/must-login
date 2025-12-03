@@ -15,6 +15,9 @@
     function bindEvents() {
         // Toggle status on admin bar click
         $(document).on('click', '#wp-admin-bar-must-login > a', handleToggleClick);
+
+        // Dismiss cache notice
+        $(document).on('click', '.must-login-cache-notice .notice-dismiss', handleDismissCacheNotice);
     }
     
     /**
@@ -81,7 +84,7 @@
     function updateStatusDisplay(enabled) {
         var $statusSpan = $('.must-login-status');
         var $adminBar = $('#wp-admin-bar-must-login');
-        
+
         // Update status
         if (enabled) {
             $statusSpan
@@ -101,8 +104,29 @@
                 .removeClass('must-login-active');
         }
     }
-    
+
+    /**
+     * Handle dismiss cache notice
+     */
+    function handleDismissCacheNotice(e) {
+        var $notice = $(this).closest('.must-login-cache-notice');
+
+        $.ajax({
+            url: mustLoginData.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'must_login_dismiss_cache_notice',
+                nonce: mustLoginData.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    $notice.fadeOut();
+                }
+            }
+        });
+    }
+
     // Initialize on document ready
     $(document).ready(init);
-    
+
 })(jQuery);

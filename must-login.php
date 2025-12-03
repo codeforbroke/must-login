@@ -34,9 +34,11 @@ class MustLogin {
   
   // Capability
   const CAPABILITY = 'must_login_manage';
-  
+
   private $option_name = 'must_login_require_login';
+  private $rest_api_option_name = 'must_login_protect_rest_api';
   private $is_enabled_cache = null;
+  private $rest_api_enabled_cache = null;
   
   /**
    * Constructor
@@ -56,7 +58,11 @@ class MustLogin {
     // Admin bar
     add_action('admin_bar_menu', array($this, 'add_admin_bar_item'), 100);
     add_action('wp_ajax_must_login_toggle_status', array($this, 'ajax_toggle_status'));
-    
+
+    // Admin notices
+    add_action('admin_notices', array($this, 'display_cache_warning'));
+    add_action('wp_ajax_must_login_dismiss_cache_notice', array($this, 'dismiss_cache_notice'));
+
     // Enqueue assets
     add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
     add_action('wp_enqueue_scripts', array($this, 'enqueue_frontend_assets'));
@@ -64,10 +70,13 @@ class MustLogin {
     // Enforce login requirement
     add_action('template_redirect', array($this, 'enforce_login'));
     add_action('admin_init', array($this, 'enforce_admin_login'));
-    
+
+    // Enforce REST API authentication
+    add_filter('rest_authentication_errors', array($this, 'enforce_rest_api_authentication'), 99);
+
     // Add settings link on plugins page
     add_filter('plugin_action_links_' . MUST_LOGIN_PLUGIN_BASENAME, array($this, 'add_settings_link'));
-    
+
     // Custom capability mapping
     add_filter('map_meta_cap', array($this, 'map_meta_cap'), 10, 4);
   }
@@ -79,6 +88,11 @@ class MustLogin {
     // Set default option (only on first install)
     if (get_option($this->option_name) === false) {
       add_option($this->option_name, self::STATUS_DISABLED);
+    }
+
+    // Set default REST API protection (only on first install)
+    if (get_option($this->rest_api_option_name) === false) {
+      add_option($this->rest_api_option_name, self::STATUS_ENABLED); // Default to protected
     }
     
     // Version check for migrations
@@ -159,13 +173,94 @@ class MustLogin {
     $this->is_enabled_cache = ($value === self::STATUS_ENABLED);
     return $this->is_enabled_cache;
   }
-  
+
+  /**
+   * Check if REST API protection is enabled
+   */
+  private function is_rest_api_protection_enabled() {
+    // Check instance cache first
+    if ($this->rest_api_enabled_cache !== null) {
+      return $this->rest_api_enabled_cache;
+    }
+
+    // Get from database
+    $value = get_option($this->rest_api_option_name, self::STATUS_ENABLED);
+
+    $this->rest_api_enabled_cache = ($value === self::STATUS_ENABLED);
+    return $this->rest_api_enabled_cache;
+  }
+
   /**
    * Clear status cache
    */
   private function clear_status_cache() {
     wp_cache_delete(self::CACHE_KEY, self::CACHE_GROUP);
     $this->is_enabled_cache = null;
+
+    // Also clear page caches
+    $this->clear_page_caches();
+  }
+
+  /**
+   * Clear page caches from popular caching plugins
+   */
+  private function clear_page_caches() {
+    // WP Super Cache
+    if (function_exists('wp_cache_clean_cache')) {
+      global $file_prefix;
+      wp_cache_clean_cache($file_prefix, true);
+    }
+
+    // W3 Total Cache
+    if (function_exists('w3tc_flush_all')) {
+      w3tc_flush_all();
+    }
+
+    // WP Rocket
+    if (function_exists('rocket_clean_domain')) {
+      rocket_clean_domain();
+    }
+
+    // LiteSpeed Cache
+    if (class_exists('LiteSpeed_Cache_API') && method_exists('LiteSpeed_Cache_API', 'purge_all')) {
+      LiteSpeed_Cache_API::purge_all();
+    }
+
+    // WP Fastest Cache
+    if (function_exists('wpfc_clear_all_cache')) {
+      wpfc_clear_all_cache(true);
+    }
+
+    // Autoptimize
+    if (class_exists('autoptimizeCache')) {
+      autoptimizeCache::clearall();
+    }
+
+    // Cache Enabler
+    if (class_exists('Cache_Enabler')) {
+      Cache_Enabler::clear_complete_cache();
+    }
+
+    // Comet Cache
+    if (class_exists('comet_cache') && method_exists('comet_cache', 'clear')) {
+      comet_cache::clear();
+    }
+
+    // SG Optimizer (SiteGround)
+    if (function_exists('sg_cachepress_purge_cache')) {
+      sg_cachepress_purge_cache();
+    }
+
+    // WP Optimize
+    if (class_exists('WP_Optimize') && method_exists('WP_Optimize', 'get_page_cache')) {
+      $wp_optimize = WP_Optimize::instance();
+      if ($cache = $wp_optimize->get_page_cache()) {
+        $cache->purge();
+      }
+    }
+
+    // Fire action for other caching plugins
+    do_action('must_login_clear_cache');
   }
   
   /**
@@ -194,18 +289,36 @@ class MustLogin {
         'default' => self::STATUS_DISABLED
       )
     );
-    
+
+    register_setting(
+      'must_login_settings_group',
+      $this->rest_api_option_name,
+      array(
+        'type' => 'string',
+        'sanitize_callback' => array($this, 'sanitize_rest_api_setting'),
+        'default' => self::STATUS_ENABLED
+      )
+    );
+
     add_settings_section(
       'must_login_main_section',
       __('Access Control Settings', 'must-login'),
       array($this, 'settings_section_callback'),
       'must-login'
     );
-    
+
     add_settings_field(
       'must_login_require_login_field',
       __('Require Login', 'must-login'),
       array($this, 'require_login_field_callback'),
+      'must-login',
+      'must_login_main_section'
+    );
+
+    add_settings_field(
+      'must_login_protect_rest_api_field',
+      __('Protect REST API', 'must-login'),
+      array($this, 'protect_rest_api_field_callback'),
       'must-login',
       'must_login_main_section'
     );
@@ -217,7 +330,11 @@ class MustLogin {
   public function sanitize_setting($value) {
     // Clear cache when setting changes
     $this->clear_status_cache();
-    
+
+    // Clear dismiss flag so notice shows again if re-enabled
+    $user_id = get_current_user_id();
+    delete_user_meta($user_id, 'must_login_cache_notice_dismissed');
+
     // Only accept exact string '1' or boolean true, everything else becomes '0'
     if ($value === self::STATUS_ENABLED || $value === 1 || $value === true) {
       return self::STATUS_ENABLED;
@@ -239,9 +356,9 @@ class MustLogin {
     $value = get_option($this->option_name, self::STATUS_DISABLED);
     ?>
     <label>
-      <input type="checkbox" 
-           name="<?php echo esc_attr($this->option_name); ?>" 
-           value="1" 
+      <input type="checkbox"
+           name="<?php echo esc_attr($this->option_name); ?>"
+           value="1"
            <?php checked($value, self::STATUS_ENABLED); ?>>
       <?php esc_html_e('Enable login requirement for all site pages', 'must-login'); ?>
     </label>
@@ -249,6 +366,39 @@ class MustLogin {
       <?php esc_html_e('When enabled, visitors must log in to view any page on your site. Administrators can always access the site.', 'must-login'); ?>
     </p>
     <?php
+  }
+
+  /**
+   * Protect REST API field callback
+   */
+  public function protect_rest_api_field_callback() {
+    $value = get_option($this->rest_api_option_name, self::STATUS_ENABLED);
+    ?>
+    <label>
+      <input type="checkbox"
+           name="<?php echo esc_attr($this->rest_api_option_name); ?>"
+           value="1"
+           <?php checked($value, self::STATUS_ENABLED); ?>>
+      <?php esc_html_e('Require authentication for REST API endpoints', 'must-login'); ?>
+    </label>
+    <p class="description">
+      <?php esc_html_e('When enabled, REST API access requires authentication (when login requirement is active). Some endpoints like authentication and public forms are always allowed.', 'must-login'); ?>
+    </p>
+    <?php
+  }
+
+  /**
+   * Sanitize REST API setting value
+   */
+  public function sanitize_rest_api_setting($value) {
+    // Clear cache when setting changes
+    $this->rest_api_enabled_cache = null;
+
+    // Only accept exact string '1' or boolean true, everything else becomes '0'
+    if ($value === self::STATUS_ENABLED || $value === 1 || $value === true) {
+      return self::STATUS_ENABLED;
+    }
+    return self::STATUS_DISABLED;
   }
   
   /**
@@ -280,9 +430,19 @@ class MustLogin {
             <li><?php esc_html_e('Administrators always have access', 'must-login'); ?></li>
             <li><?php esc_html_e('Non-logged-in users are redirected to the login page', 'must-login'); ?></li>
             <li><?php esc_html_e('Quick toggle available in the admin bar', 'must-login'); ?></li>
+            <li><?php esc_html_e('REST API protection can be enabled/disabled separately', 'must-login'); ?></li>
             <li><?php esc_html_e('RSS feeds and XML-RPC remain accessible', 'must-login'); ?></li>
           </ul>
-          
+
+          <h3><?php esc_html_e('REST API Protection', 'must-login'); ?></h3>
+          <p><?php esc_html_e('When REST API protection is enabled, most REST API endpoints require authentication. The following are always allowed:', 'must-login'); ?></p>
+          <ul>
+            <li><?php esc_html_e('Authentication endpoints (JWT, Simple JWT Login)', 'must-login'); ?></li>
+            <li><?php esc_html_e('Contact form endpoints (Contact Form 7, WPForms, Gravity Forms)', 'must-login'); ?></li>
+            <li><?php esc_html_e('oEmbed endpoints', 'must-login'); ?></li>
+          </ul>
+          <p><?php esc_html_e('Developers can use the "must_login_allowed_rest_routes" filter to allow additional endpoints.', 'must-login'); ?></p>
+
           <h3><?php esc_html_e('Quick Access', 'must-login'); ?></h3>
           <p><?php esc_html_e('Use the lock icon in the admin bar to toggle site-wide login protection.', 'must-login'); ?></p>
         </div>
@@ -333,22 +493,26 @@ class MustLogin {
    */
   public function ajax_toggle_status() {
     check_ajax_referer('must_login_toggle_nonce', 'nonce');
-    
+
     if (!current_user_can(self::CAPABILITY)) {
       wp_send_json_error(array('message' => __('Unauthorized', 'must-login')));
     }
-    
+
     $current_value = get_option($this->option_name, self::STATUS_DISABLED);
     $new_value = ($current_value === self::STATUS_ENABLED) ? self::STATUS_DISABLED : self::STATUS_ENABLED;
-    
+
     update_option($this->option_name, $new_value);
-    
+
     // Clear cache
     $this->clear_status_cache();
-    
+
+    // Clear dismiss flag so notice shows again if re-enabled
+    $user_id = get_current_user_id();
+    delete_user_meta($user_id, 'must_login_cache_notice_dismissed');
+
     wp_send_json_success(array(
       'enabled' => $new_value === self::STATUS_ENABLED,
-      'message' => $new_value === self::STATUS_ENABLED 
+      'message' => $new_value === self::STATUS_ENABLED
         ? __('Login requirement enabled', 'must-login')
         : __('Login requirement disabled', 'must-login')
     ));
@@ -358,10 +522,10 @@ class MustLogin {
    * Enqueue admin assets
    */
   public function enqueue_admin_assets($hook) {
-    // Only load on settings page and when admin bar is showing
+    // Load on settings page, when admin bar is showing, or when user can manage the plugin (for notices)
     $load_on_pages = array('settings_page_must-login');
-    
-    if (!in_array($hook, $load_on_pages, true) && !is_admin_bar_showing()) {
+
+    if (!in_array($hook, $load_on_pages, true) && !is_admin_bar_showing() && !current_user_can(self::CAPABILITY)) {
       return;
     }
     
@@ -491,24 +655,96 @@ class MustLogin {
     if (is_user_logged_in()) {
       return;
     }
-    
+
     // Skip if login requirement is disabled
     if (!$this->is_login_required()) {
       return;
     }
-    
+
     // Allow AJAX requests (for login forms, etc.)
     global $pagenow;
     if ($pagenow === 'admin-ajax.php') {
       return;
     }
-    
+
     // Redirect to login
     $redirect_url = wp_login_url(admin_url());
     wp_safe_redirect($redirect_url);
     exit;
   }
-  
+
+  /**
+   * Enforce REST API authentication
+   */
+  public function enforce_rest_api_authentication($result) {
+    // If already an error, return it
+    if (is_wp_error($result)) {
+      return $result;
+    }
+
+    // Skip if user is already logged in
+    if (is_user_logged_in()) {
+      return $result;
+    }
+
+    // Skip if login requirement is disabled
+    if (!$this->is_login_required()) {
+      return $result;
+    }
+
+    // Skip if REST API protection is disabled
+    if (!$this->is_rest_api_protection_enabled()) {
+      return $result;
+    }
+
+    // Get the current REST route
+    $route = '';
+    if (isset($GLOBALS['wp']->query_vars['rest_route'])) {
+      $route = $GLOBALS['wp']->query_vars['rest_route'];
+    } elseif (!empty($_SERVER['REQUEST_URI'])) {
+      $route = sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI']));
+      // Remove query string
+      $route = strtok($route, '?');
+      // Remove the rest_route prefix if present
+      $route = preg_replace('#^/wp-json#', '', $route);
+    }
+
+    // Allow specific public endpoints
+    $allowed_routes = apply_filters('must_login_allowed_rest_routes', array(
+      // Authentication endpoints
+      '/wp/v2/users/me',
+      '/jwt-auth/v1/token',
+      '/simple-jwt-login/v1/auth',
+      '/wp/v2/users/register',
+
+      // Contact Form 7
+      '/contact-form-7/',
+
+      // WPForms
+      '/wpforms/',
+
+      // Gravity Forms
+      '/gf/',
+
+      // oEmbed (for embedding content)
+      '/oembed/',
+    ));
+
+    // Check if current route is allowed
+    foreach ($allowed_routes as $allowed_route) {
+      if (strpos($route, $allowed_route) !== false) {
+        return $result;
+      }
+    }
+
+    // Return authentication error
+    return new WP_Error(
+      'rest_authentication_required',
+      __('Authentication required to access the REST API.', 'must-login'),
+      array('status' => 401)
+    );
+  }
+
   /**
    * Add settings link on plugins page
    */
@@ -516,6 +752,123 @@ class MustLogin {
     $settings_link = '<a href="' . esc_url(admin_url('options-general.php?page=must-login')) . '">' . __('Settings', 'must-login') . '</a>';
     array_unshift($links, $settings_link);
     return $links;
+  }
+
+  /**
+   * Detect active caching plugins
+   */
+  private function get_active_caching_plugins() {
+    $caching_plugins = array();
+
+    // WP Super Cache
+    if (function_exists('wp_cache_clean_cache')) {
+      $caching_plugins[] = 'WP Super Cache';
+    }
+
+    // W3 Total Cache
+    if (function_exists('w3tc_flush_all')) {
+      $caching_plugins[] = 'W3 Total Cache';
+    }
+
+    // WP Rocket
+    if (function_exists('rocket_clean_domain')) {
+      $caching_plugins[] = 'WP Rocket';
+    }
+
+    // LiteSpeed Cache
+    if (class_exists('LiteSpeed_Cache_API')) {
+      $caching_plugins[] = 'LiteSpeed Cache';
+    }
+
+    // WP Fastest Cache
+    if (function_exists('wpfc_clear_all_cache')) {
+      $caching_plugins[] = 'WP Fastest Cache';
+    }
+
+    // Autoptimize
+    if (class_exists('autoptimizeCache')) {
+      $caching_plugins[] = 'Autoptimize';
+    }
+
+    // Cache Enabler
+    if (class_exists('Cache_Enabler')) {
+      $caching_plugins[] = 'Cache Enabler';
+    }
+
+    // Comet Cache
+    if (class_exists('comet_cache')) {
+      $caching_plugins[] = 'Comet Cache';
+    }
+
+    // SG Optimizer
+    if (function_exists('sg_cachepress_purge_cache')) {
+      $caching_plugins[] = 'SG Optimizer';
+    }
+
+    // WP Optimize
+    if (class_exists('WP_Optimize')) {
+      $caching_plugins[] = 'WP Optimize';
+    }
+
+    return $caching_plugins;
+  }
+
+  /**
+   * Display cache warning notice
+   */
+  public function display_cache_warning() {
+    // Only show to users who can manage the plugin
+    if (!current_user_can(self::CAPABILITY)) {
+      return;
+    }
+
+    // Only show if login requirement is enabled
+    if (!$this->is_login_required()) {
+      return;
+    }
+
+    // Check if user has dismissed the notice
+    $user_id = get_current_user_id();
+    if (get_user_meta($user_id, 'must_login_cache_notice_dismissed', true)) {
+      return;
+    }
+
+    // Check for active caching plugins
+    $caching_plugins = $this->get_active_caching_plugins();
+    if (empty($caching_plugins)) {
+      return;
+    }
+
+    $plugin_list = implode(', ', $caching_plugins);
+    ?>
+    <div class="notice notice-warning is-dismissible must-login-cache-notice" data-notice="cache-warning">
+      <p>
+        <strong><?php esc_html_e('Must Login - Cache Notice:', 'must-login'); ?></strong>
+        <?php
+        printf(
+          esc_html__('Login requirement is enabled. We automatically cleared the cache for: %s. If you experience issues with users accessing the site without logging in, try manually clearing your cache.', 'must-login'),
+          '<strong>' . esc_html($plugin_list) . '</strong>'
+        );
+        ?>
+      </p>
+    </div>
+    <?php
+  }
+
+  /**
+   * AJAX handler to dismiss cache notice
+   */
+  public function dismiss_cache_notice() {
+    check_ajax_referer('must_login_toggle_nonce', 'nonce');
+
+    if (!current_user_can(self::CAPABILITY)) {
+      wp_send_json_error(array('message' => __('Unauthorized', 'must-login')));
+    }
+
+    $user_id = get_current_user_id();
+    update_user_meta($user_id, 'must_login_cache_notice_dismissed', true);
+
+    wp_send_json_success();
   }
 }
 
@@ -530,5 +883,6 @@ register_uninstall_hook(__FILE__, 'must_login_uninstall');
 function must_login_uninstall() {
   // Delete all plugin data on uninstall:
   delete_option('must_login_require_login');
+  delete_option('must_login_protect_rest_api');
   delete_option('must_login_version');
 }
