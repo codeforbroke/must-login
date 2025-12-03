@@ -1,0 +1,145 @@
+/* Admin Bar Styles */
+#wp-admin-bar-must-login .ab-icon:before {
+  content: "\f160";
+  top: 2px;
+  transition: color 0.2s ease;
+}
+
+/* Change icon color based on status */
+#wp-admin-bar-must-login.must-login-active .ab-icon:before {
+  color: #00a32a;
+}
+
+#wp-admin-bar-must-login.must-login-inactive .ab-icon:before {
+  color: #dba617;
+}
+
+#wp-admin-bar-must-login .ab-label {
+  display: inline-block;
+}
+
+.must-login-status {
+  display: inline-block;
+  padding: 0 4px;
+  font-weight: 700;
+  font-size: 11px;
+  margin-left: 6px;
+  transition: color 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.must-login-status-on {
+  color: #00a32a;
+}
+
+.must-login-status-off {
+  color: #dba617;
+}
+
+/* Hover effects */
+#wp-admin-bar-must-login:hover .must-login-status-on {
+  color: #008a24;
+}
+
+#wp-admin-bar-must-login:hover .must-login-status-off {
+  color: #c79614;
+}
+
+#wp-admin-bar-must-login .ab-item {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+#wp-admin-bar-must-login > .ab-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Submenu styling */
+#wp-admin-bar-must-login .ab-submenu {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+#wp-admin-bar-must-login-settings .ab-item {
+  transition: background-color 0.2s ease;
+}
+
+#wp-admin-bar-must-login-settings .ab-item:hover {
+  background-color: #0073aa;
+}
+
+/* Loading State */
+#wp-admin-bar-must-login.must-login-loading .ab-label {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+#wp-admin-bar-must-login.must-login-loading .ab-icon:before {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mobile Responsive */
+@media screen and (max-width: 782px) {
+  #wp-admin-bar-must-login .ab-icon {
+    padding: 0 !important;
+  }
+  
+  #wp-admin-bar-must-login .ab-label {
+    display: none;
+  }
+}
+
+/* Admin Page Styles */
+.must-login-settings-container {
+  max-width: 800px;
+}
+
+.must-login-info-box {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f0f0f1;
+  border-left: 4px solid #2271b1;
+  border-radius: 0 4px 4px 0;
+}
+
+.must-login-info-box h2 {
+  margin-top: 0;
+  color: #1d2327;
+  font-size: 18px;
+}
+
+.must-login-info-box h3 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  color: #1d2327;
+  font-size: 15px;
+}
+
+.must-login-info-box ul {
+  margin-bottom: 0;
+  padding-left: 20px;
+}
+
+.must-login-info-box li {
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.must-login-version-info {
+  background: #ffffff;
+  border-left-color: #50575e;
+}
+
+.must-login-version-info p {
+  margin: 0;
+  color: #50575e;
+}
