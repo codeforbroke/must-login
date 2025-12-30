@@ -21,16 +21,16 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Create release directory
-        run: mkdir -p release/must-login
+        run: mkdir -p release/cfb-must-login
 
       - name: Copy plugin files
         run: |
-          rsync -av --exclude='.wp-env.json' --exclude='.git' --exclude='.github' --exclude='.wordpress-org' --exclude='release' . release/must-login/
+          rsync -av --exclude='.wp-env.json' --exclude='.git' --exclude='.github' --exclude='.wordpress-org' --exclude='release' . release/cfb-must-login/
 
       - name: Create zip file
         run: |
           cd release
-          zip -r must-login.zip must-login/
+          zip -r cfb-must-login.zip cfb-must-login/
           cd ..
 
       - name: Create Release
@@ -41,14 +41,14 @@ jobs:
             WordPress Plugin Release ${{ steps.get_version.outputs.VERSION }}
 
             ## Installation
-            1. Download the `must-login.zip` file below
+            1. Download the `cfb-must-login.zip` file below
             2. In WordPress admin, go to Plugins → Add New → Upload Plugin
             3. Upload the zip file and activate
 
             ## What's Included
-            - Plugin core file (must-login.php)
+            - Plugin core file (cfb-must-login.php)
             - Assets directory (CSS and JavaScript)
             - Documentation (readme.txt)
-          files: ./release/must-login.zip
+          files: ./release/cfb-must-login.zip
           draft: false
           prerelease: false
