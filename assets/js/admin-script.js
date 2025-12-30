@@ -14,23 +14,23 @@
      */
     function bindEvents() {
         // Toggle status on admin bar click
-        $(document).on('click', '#wp-admin-bar-must-login > a', handleToggleClick);
+        $(document).on('click', '#wp-admin-bar-cfb-must-login > a', handleToggleClick);
 
         // Dismiss cache notice
-        $(document).on('click', '.must-login-cache-notice .notice-dismiss', handleDismissCacheNotice);
+        $(document).on('click', '.cfb-must-login-cache-notice .notice-dismiss', handleDismissCacheNotice);
     }
     
     /**
      * Update admin bar class based on status
      */
     function updateAdminBarClass() {
-        var $adminBar = $('#wp-admin-bar-must-login');
-        var $statusSpan = $('.must-login-status');
-        
-        if ($statusSpan.hasClass('must-login-status-on')) {
-            $adminBar.addClass('must-login-active').removeClass('must-login-inactive');
+        var $adminBar = $('#wp-admin-bar-cfb-must-login');
+        var $statusSpan = $('.cfb-must-login-status');
+
+        if ($statusSpan.hasClass('cfb-must-login-status-on')) {
+            $adminBar.addClass('cfb-must-login-active').removeClass('cfb-must-login-inactive');
         } else {
-            $adminBar.addClass('must-login-inactive').removeClass('must-login-active');
+            $adminBar.addClass('cfb-must-login-inactive').removeClass('cfb-must-login-active');
         }
     }
     
@@ -39,12 +39,12 @@
      */
     function handleToggleClick(e) {
         e.preventDefault();
-        
+
         // Don't toggle if clicking settings link
-        if ($(this).closest('#wp-admin-bar-must-login-settings').length) {
+        if ($(this).closest('#wp-admin-bar-cfb-must-login-settings').length) {
             return;
         }
-        
+
         toggleStatus();
     }
     
@@ -52,17 +52,17 @@
      * Toggle status via AJAX
      */
     function toggleStatus() {
-        var $adminBar = $('#wp-admin-bar-must-login');
-        
+        var $adminBar = $('#wp-admin-bar-cfb-must-login');
+
         $.ajax({
-            url: mustLoginData.ajaxUrl,
+            url: cfbMustLoginData.ajaxUrl,
             type: 'POST',
             data: {
-                action: 'must_login_toggle_status',
-                nonce: mustLoginData.nonce
+                action: 'cfb_must_login_toggle_status',
+                nonce: cfbMustLoginData.nonce
             },
             beforeSend: function() {
-                $adminBar.addClass('must-login-loading');
+                $adminBar.addClass('cfb-must-login-loading');
             },
             success: function(response) {
                 if (response.success) {
@@ -73,7 +73,7 @@
                 // Silently fail - user can see loading state ended
             },
             complete: function() {
-                $adminBar.removeClass('must-login-loading');
+                $adminBar.removeClass('cfb-must-login-loading');
             }
         });
     }
@@ -82,26 +82,26 @@
      * Update status display
      */
     function updateStatusDisplay(enabled) {
-        var $statusSpan = $('.must-login-status');
-        var $adminBar = $('#wp-admin-bar-must-login');
+        var $statusSpan = $('.cfb-must-login-status');
+        var $adminBar = $('#wp-admin-bar-cfb-must-login');
 
         // Update status
         if (enabled) {
             $statusSpan
                 .text('ON')
-                .removeClass('must-login-status-off')
-                .addClass('must-login-status-on');
+                .removeClass('cfb-must-login-status-off')
+                .addClass('cfb-must-login-status-on');
             $adminBar
-                .addClass('must-login-active')
-                .removeClass('must-login-inactive');
+                .addClass('cfb-must-login-active')
+                .removeClass('cfb-must-login-inactive');
         } else {
             $statusSpan
                 .text('OFF')
-                .removeClass('must-login-status-on')
-                .addClass('must-login-status-off');
+                .removeClass('cfb-must-login-status-on')
+                .addClass('cfb-must-login-status-off');
             $adminBar
-                .addClass('must-login-inactive')
-                .removeClass('must-login-active');
+                .addClass('cfb-must-login-inactive')
+                .removeClass('cfb-must-login-active');
         }
     }
 
@@ -109,14 +109,14 @@
      * Handle dismiss cache notice
      */
     function handleDismissCacheNotice(e) {
-        var $notice = $(this).closest('.must-login-cache-notice');
+        var $notice = $(this).closest('.cfb-must-login-cache-notice');
 
         $.ajax({
-            url: mustLoginData.ajaxUrl,
+            url: cfbMustLoginData.ajaxUrl,
             type: 'POST',
             data: {
-                action: 'must_login_dismiss_cache_notice',
-                nonce: mustLoginData.nonce
+                action: 'cfb_must_login_dismiss_cache_notice',
+                nonce: cfbMustLoginData.nonce
             },
             success: function(response) {
                 if (response.success) {

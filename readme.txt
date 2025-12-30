@@ -1,9 +1,9 @@
-=== Must Login ===
+=== CFB Must Login ===
 Contributors: codeforbroke
-Tags: login, private, access, security, members, rest-api
+Tags: login, private, security, members, rest-api
 Requires at least: 5.0
 Tested up to: 6.9
-Requires PHP: 8.1
+Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -71,7 +71,7 @@ Even with REST API protection enabled, the following endpoints remain accessible
 * Contact form endpoints (Contact Form 7, WPForms, Gravity Forms)
 * oEmbed endpoints
 
-Developers can allow additional endpoints using the `must_login_allowed_rest_routes` filter.
+Developers can allow additional endpoints using the `cfb_must_login_allowed_rest_routes` filter.
 
 = Does this work with caching plugins? =
 
@@ -103,14 +103,14 @@ Yes! Must Login works alongside membership plugins and simply ensures users are 
 
 = Can I customize the redirect URL? =
 
-Yes, developers can use the `must_login_redirect_url` filter to customize the redirect URL.
+Yes, developers can use the `cfb_must_login_redirect_url` filter to customize the redirect URL.
 
 = How do I allow additional REST API endpoints? =
 
-Developers can use the `must_login_allowed_rest_routes` filter to add custom endpoints to the allowlist:
+Developers can use the `cfb_must_login_allowed_rest_routes` filter to add custom endpoints to the allowlist:
 
 `
-add_filter('must_login_allowed_rest_routes', function($routes) {
+add_filter('cfb_must_login_allowed_rest_routes', function($routes) {
     $routes[] = '/my-plugin/v1/public-endpoint';
     return $routes;
 });
@@ -143,16 +143,16 @@ Initial release with full login protection, REST API security, and automatic cac
 
 = Filters =
 
-**must_login_redirect_url** - Customize the login redirect URL
+**cfb_must_login_redirect_url** - Customize the login redirect URL
 `
-add_filter('must_login_redirect_url', function($redirect_url, $redirect_to) {
+add_filter('cfb_must_login_redirect_url', function($redirect_url, $redirect_to) {
     return 'https://example.com/custom-login';
 }, 10, 2);
 `
 
-**must_login_allowed_rest_routes** - Allow additional REST API endpoints
+**cfb_must_login_allowed_rest_routes** - Allow additional REST API endpoints
 `
-add_filter('must_login_allowed_rest_routes', function($routes) {
+add_filter('cfb_must_login_allowed_rest_routes', function($routes) {
     $routes[] = '/my-plugin/v1/public';
     return $routes;
 });
@@ -160,13 +160,13 @@ add_filter('must_login_allowed_rest_routes', function($routes) {
 
 = Actions =
 
-**must_login_clear_cache** - Triggered when cache is cleared
+**cfb_must_login_clear_cache** - Triggered when cache is cleared
 `
-add_action('must_login_clear_cache', function() {
+add_action('cfb_must_login_clear_cache', function() {
     // Custom cache clearing logic
 });
 `
 
 = Capabilities =
 
-The plugin uses the `must_login_manage` capability, which is mapped to `manage_options` by default. You can customize this using the `map_meta_cap` filter.
+The plugin uses the `cfb_must_login_manage` capability, which is mapped to `manage_options` by default. You can customize this using the `map_meta_cap` filter.

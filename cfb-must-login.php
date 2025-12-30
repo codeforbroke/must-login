@@ -1,14 +1,17 @@
 <?php
 /**
- * Plugin Name: Must Login
+ * Plugin Name: CFB Must Login
  * Plugin URI: https://github.com/codeforbroke/must-login
  * Description: Require users to log in before viewing your site with easy admin toggle controls
+ * Version: 1.0.0
  * Author: Code For Broke, Inc.
  * Author URI: https://codeforbroke.com
- * Text Domain: must-login
  * License: GPL v2 or later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html 
- * Version: 1.0.0
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: cfb-must-login
+ * Domain Path: /languages
+ * Requires at least: 5.0
+ * Requires PHP: 7.4
  */
 
 // Prevent direct access
@@ -17,26 +20,26 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('MUST_LOGIN_VERSION', '1.0.0');
-define('MUST_LOGIN_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('MUST_LOGIN_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('MUST_LOGIN_PLUGIN_BASENAME', plugin_basename(__FILE__));
+define('CFB_MUST_LOGIN_VERSION', '1.0.0');
+define('CFB_MUST_LOGIN_PLUGIN_DIR', plugin_dir_path(__FILE__));
+define('CFB_MUST_LOGIN_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('CFB_MUST_LOGIN_PLUGIN_BASENAME', plugin_basename(__FILE__));
 
-class MustLogin {
+class CFB_Must_Login {
   
   // Status constants
   const STATUS_DISABLED = '0';
   const STATUS_ENABLED = '1';
   
   // Cache group
-  const CACHE_GROUP = 'must_login';
-  const CACHE_KEY = 'must_login_status';
+  const CACHE_GROUP = 'cfb_must_login';
+  const CACHE_KEY = 'cfb_must_login_status';
   
   // Capability
-  const CAPABILITY = 'must_login_manage';
+  const CAPABILITY = 'cfb_must_login_manage';
 
-  private $option_name = 'must_login_require_login';
-  private $rest_api_option_name = 'must_login_protect_rest_api';
+  private $option_name = 'cfb_must_login_require_login';
+  private $rest_api_option_name = 'cfb_must_login_protect_rest_api';
   private $is_enabled_cache = null;
   private $rest_api_enabled_cache = null;
   
@@ -57,11 +60,11 @@ class MustLogin {
     
     // Admin bar
     add_action('admin_bar_menu', array($this, 'add_admin_bar_item'), 100);
-    add_action('wp_ajax_must_login_toggle_status', array($this, 'ajax_toggle_status'));
+    add_action('wp_ajax_cfb_must_login_toggle_status', array($this, 'ajax_toggle_status'));
 
     // Admin notices
     add_action('admin_notices', array($this, 'display_cache_warning'));
-    add_action('wp_ajax_must_login_dismiss_cache_notice', array($this, 'dismiss_cache_notice'));
+    add_action('wp_ajax_cfb_must_login_dismiss_cache_notice', array($this, 'dismiss_cache_notice'));
 
     // Enqueue assets
     add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_assets'));
@@ -75,7 +78,7 @@ class MustLogin {
     add_filter('rest_authentication_errors', array($this, 'enforce_rest_api_authentication'), 99);
 
     // Add settings link on plugins page
-    add_filter('plugin_action_links_' . MUST_LOGIN_PLUGIN_BASENAME, array($this, 'add_settings_link'));
+    add_filter('plugin_action_links_' . CFB_MUST_LOGIN_PLUGIN_BASENAME, array($this, 'add_settings_link'));
 
     // Custom capability mapping
     add_filter('map_meta_cap', array($this, 'map_meta_cap'), 10, 4);
@@ -96,14 +99,14 @@ class MustLogin {
     }
     
     // Version check for migrations
-    $installed_version = get_option('must_login_version', '0.0.0');
+    $installed_version = get_option('cfb_must_login_version', '0.0.0');
     
-    if (version_compare($installed_version, MUST_LOGIN_VERSION, '<')) {
+    if (version_compare($installed_version, CFB_MUST_LOGIN_VERSION, '<')) {
       // Run any necessary migrations here
       $this->run_migrations($installed_version);
       
       // Update version number
-      update_option('must_login_version', MUST_LOGIN_VERSION);
+      update_option('cfb_must_login_version', CFB_MUST_LOGIN_VERSION);
       
       // Clear caches
       wp_cache_flush();
@@ -135,7 +138,7 @@ class MustLogin {
    * Initialize plugin
    */
   public function init() {
-    // Load translations, future version
+    // WordPress automatically loads translations for WordPress.org hosted plugins since 4.6
   }
   
   /**
@@ -260,7 +263,7 @@ class MustLogin {
     }
 
     // Fire action for other caching plugins
-    do_action('must_login_clear_cache');
+    do_action('cfb_must_login_clear_cache');
   }
   
   /**
@@ -268,10 +271,10 @@ class MustLogin {
    */
   public function add_admin_menu() {
     add_options_page(
-      __('Must Login', 'must-login'),
-      __('Must Login', 'must-login'),
+      __('CFB Must Login', 'cfb-must-login'),
+      __('CFB Must Login', 'cfb-must-login'),
       self::CAPABILITY,
-      'must-login',
+      'cfb-must-login',
       array($this, 'settings_page')
     );
   }
@@ -281,7 +284,7 @@ class MustLogin {
    */
   public function register_settings() {
     register_setting(
-      'must_login_settings_group',
+      'cfb_must_login_settings_group',
       $this->option_name,
       array(
         'type' => 'string',
@@ -291,7 +294,7 @@ class MustLogin {
     );
 
     register_setting(
-      'must_login_settings_group',
+      'cfb_must_login_settings_group',
       $this->rest_api_option_name,
       array(
         'type' => 'string',
@@ -301,26 +304,26 @@ class MustLogin {
     );
 
     add_settings_section(
-      'must_login_main_section',
-      __('Access Control Settings', 'must-login'),
+      'cfb_must_login_main_section',
+      __('Access Control Settings', 'cfb-must-login'),
       array($this, 'settings_section_callback'),
-      'must-login'
+      'cfb-must-login'
     );
 
     add_settings_field(
-      'must_login_require_login_field',
-      __('Require Login', 'must-login'),
+      'cfb_must_login_require_login_field',
+      __('Require Login', 'cfb-must-login'),
       array($this, 'require_login_field_callback'),
-      'must-login',
-      'must_login_main_section'
+      'cfb-must-login',
+      'cfb_must_login_main_section'
     );
 
     add_settings_field(
-      'must_login_protect_rest_api_field',
-      __('Protect REST API', 'must-login'),
+      'cfb_must_login_protect_rest_api_field',
+      __('Protect REST API', 'cfb-must-login'),
       array($this, 'protect_rest_api_field_callback'),
-      'must-login',
-      'must_login_main_section'
+      'cfb-must-login',
+      'cfb_must_login_main_section'
     );
   }
   
@@ -333,7 +336,7 @@ class MustLogin {
 
     // Clear dismiss flag so notice shows again if re-enabled
     $user_id = get_current_user_id();
-    delete_user_meta($user_id, 'must_login_cache_notice_dismissed');
+    delete_user_meta($user_id, 'cfb_must_login_cache_notice_dismissed');
 
     // Only accept exact string '1' or boolean true, everything else becomes '0'
     if ($value === self::STATUS_ENABLED || $value === 1 || $value === true) {
@@ -346,7 +349,7 @@ class MustLogin {
    * Settings section description
    */
   public function settings_section_callback() {
-    echo '<p>' . esc_html__('Control whether users must log in to view your site.', 'must-login') . '</p>';
+    echo '<p>' . esc_html__('Control whether users must log in to view your site.', 'cfb-must-login') . '</p>';
   }
   
   /**
@@ -360,10 +363,10 @@ class MustLogin {
            name="<?php echo esc_attr($this->option_name); ?>"
            value="1"
            <?php checked($value, self::STATUS_ENABLED); ?>>
-      <?php esc_html_e('Enable login requirement for all site pages', 'must-login'); ?>
+      <?php esc_html_e('Enable login requirement for all site pages', 'cfb-must-login'); ?>
     </label>
     <p class="description">
-      <?php esc_html_e('When enabled, visitors must log in to view any page on your site. Administrators can always access the site.', 'must-login'); ?>
+      <?php esc_html_e('When enabled, visitors must log in to view any page on your site. Administrators can always access the site.', 'cfb-must-login'); ?>
     </p>
     <?php
   }
@@ -379,10 +382,10 @@ class MustLogin {
            name="<?php echo esc_attr($this->rest_api_option_name); ?>"
            value="1"
            <?php checked($value, self::STATUS_ENABLED); ?>>
-      <?php esc_html_e('Require authentication for REST API endpoints', 'must-login'); ?>
+      <?php esc_html_e('Require authentication for REST API endpoints', 'cfb-must-login'); ?>
     </label>
     <p class="description">
-      <?php esc_html_e('When enabled, REST API access requires authentication (when login requirement is active). Some endpoints like authentication and public forms are always allowed.', 'must-login'); ?>
+      <?php esc_html_e('When enabled, REST API access requires authentication (when login requirement is active). Some endpoints like authentication and public forms are always allowed.', 'cfb-must-login'); ?>
     </p>
     <?php
   }
@@ -409,46 +412,46 @@ class MustLogin {
       return;
     }
     
-    settings_errors('must_login_messages');
+    settings_errors('cfb_must_login_messages');
     ?>
     <div class="wrap">
       <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
       
-      <div class="must-login-settings-container">
+      <div class="cfb-must-login-settings-container">
         <form action="options.php" method="post">
           <?php
-          settings_fields('must_login_settings_group');
-          do_settings_sections('must-login');
-          submit_button(__('Save Settings', 'must-login'));
+          settings_fields('cfb_must_login_settings_group');
+          do_settings_sections('cfb-must-login');
+          submit_button(__('Save Settings', 'cfb-must-login'));
           ?>
         </form>
         
-        <div class="must-login-info-box">
-          <h2><?php esc_html_e('How It Works', 'must-login'); ?></h2>
+        <div class="cfb-must-login-info-box">
+          <h2><?php esc_html_e('How It Works', 'cfb-must-login'); ?></h2>
           <ul>
-            <li><?php esc_html_e('When enabled, all site pages require login to view', 'must-login'); ?></li>
-            <li><?php esc_html_e('Administrators always have access', 'must-login'); ?></li>
-            <li><?php esc_html_e('Non-logged-in users are redirected to the login page', 'must-login'); ?></li>
-            <li><?php esc_html_e('Quick toggle available in the admin bar', 'must-login'); ?></li>
-            <li><?php esc_html_e('REST API protection can be enabled/disabled separately', 'must-login'); ?></li>
-            <li><?php esc_html_e('RSS feeds and XML-RPC remain accessible', 'must-login'); ?></li>
+            <li><?php esc_html_e('When enabled, all site pages require login to view', 'cfb-must-login'); ?></li>
+            <li><?php esc_html_e('Administrators always have access', 'cfb-must-login'); ?></li>
+            <li><?php esc_html_e('Non-logged-in users are redirected to the login page', 'cfb-must-login'); ?></li>
+            <li><?php esc_html_e('Quick toggle available in the admin bar', 'cfb-must-login'); ?></li>
+            <li><?php esc_html_e('REST API protection can be enabled/disabled separately', 'cfb-must-login'); ?></li>
+            <li><?php esc_html_e('RSS feeds and XML-RPC remain accessible', 'cfb-must-login'); ?></li>
           </ul>
 
-          <h3><?php esc_html_e('REST API Protection', 'must-login'); ?></h3>
-          <p><?php esc_html_e('When REST API protection is enabled, most REST API endpoints require authentication. The following are always allowed:', 'must-login'); ?></p>
+          <h3><?php esc_html_e('REST API Protection', 'cfb-must-login'); ?></h3>
+          <p><?php esc_html_e('When REST API protection is enabled, most REST API endpoints require authentication. The following are always allowed:', 'cfb-must-login'); ?></p>
           <ul>
-            <li><?php esc_html_e('Authentication endpoints (JWT, Simple JWT Login)', 'must-login'); ?></li>
-            <li><?php esc_html_e('Contact form endpoints (Contact Form 7, WPForms, Gravity Forms)', 'must-login'); ?></li>
-            <li><?php esc_html_e('oEmbed endpoints', 'must-login'); ?></li>
+            <li><?php esc_html_e('Authentication endpoints (JWT, Simple JWT Login)', 'cfb-must-login'); ?></li>
+            <li><?php esc_html_e('Contact form endpoints (Contact Form 7, WPForms, Gravity Forms)', 'cfb-must-login'); ?></li>
+            <li><?php esc_html_e('oEmbed endpoints', 'cfb-must-login'); ?></li>
           </ul>
-          <p><?php esc_html_e('Developers can use the "must_login_allowed_rest_routes" filter to allow additional endpoints.', 'must-login'); ?></p>
+          <p><?php esc_html_e('Developers can use the "cfb_must_login_allowed_rest_routes" filter to allow additional endpoints.', 'cfb-must-login'); ?></p>
 
-          <h3><?php esc_html_e('Quick Access', 'must-login'); ?></h3>
-          <p><?php esc_html_e('Use the lock icon in the admin bar to toggle site-wide login protection.', 'must-login'); ?></p>
+          <h3><?php esc_html_e('Quick Access', 'cfb-must-login'); ?></h3>
+          <p><?php esc_html_e('Use the lock icon in the admin bar to toggle site-wide login protection.', 'cfb-must-login'); ?></p>
         </div>
-        
-        <div class="must-login-info-box must-login-version-info">
-          <p><strong><?php esc_html_e('Version:', 'must-login'); ?></strong> <?php echo esc_html(MUST_LOGIN_VERSION); ?></p>
+
+        <div class="cfb-must-login-info-box cfb-must-login-version-info">
+          <p><strong><?php esc_html_e('Version:', 'cfb-must-login'); ?></strong> <?php echo esc_html(CFB_MUST_LOGIN_VERSION); ?></p>
         </div>
       </div>
     </div>
@@ -465,26 +468,26 @@ class MustLogin {
     }
     
     $is_enabled = $this->is_login_required();
-    $status_text = $is_enabled ? __('ON', 'must-login') : __('OFF', 'must-login');
-    $status_class = $is_enabled ? 'must-login-status-on' : 'must-login-status-off';
-    
+    $status_text = $is_enabled ? __('ON', 'cfb-must-login') : __('OFF', 'cfb-must-login');
+    $status_class = $is_enabled ? 'cfb-must-login-status-on' : 'cfb-must-login-status-off';
+
     $admin_bar->add_node(array(
-      'id' => 'must-login',
+      'id' => 'cfb-must-login',
       'title' => '<span class="ab-icon dashicons dashicons-lock"></span>' .
-             '<span class="ab-label">' . __('Must Login: ', 'must-login') . 
-             '<span class="must-login-status ' . $status_class . '">' . $status_text . '</span></span>',
+             '<span class="ab-label">' . __('CFB Must Login: ', 'cfb-must-login') .
+             '<span class="cfb-must-login-status ' . $status_class . '">' . $status_text . '</span></span>',
       'href' => '#',
       'meta' => array(
-        'class' => 'must-login-admin-bar-item',
-        'title' => __('Toggle login requirement', 'must-login')
+        'class' => 'cfb-must-login-admin-bar-item',
+        'title' => __('Toggle login requirement', 'cfb-must-login')
       )
     ));
-    
+
     $admin_bar->add_node(array(
-      'id' => 'must-login-settings',
-      'parent' => 'must-login',
-      'title' => __('Settings', 'must-login'),
-      'href' => admin_url('options-general.php?page=must-login')
+      'id' => 'cfb-must-login-settings',
+      'parent' => 'cfb-must-login',
+      'title' => __('Settings', 'cfb-must-login'),
+      'href' => admin_url('options-general.php?page=cfb-must-login')
     ));
   }
   
@@ -492,10 +495,10 @@ class MustLogin {
    * AJAX toggle status
    */
   public function ajax_toggle_status() {
-    check_ajax_referer('must_login_toggle_nonce', 'nonce');
+    check_ajax_referer('cfb_must_login_toggle_nonce', 'nonce');
 
     if (!current_user_can(self::CAPABILITY)) {
-      wp_send_json_error(array('message' => __('Unauthorized', 'must-login')));
+      wp_send_json_error(array('message' => __('Unauthorized', 'cfb-must-login')));
     }
 
     $current_value = get_option($this->option_name, self::STATUS_DISABLED);
@@ -508,13 +511,13 @@ class MustLogin {
 
     // Clear dismiss flag so notice shows again if re-enabled
     $user_id = get_current_user_id();
-    delete_user_meta($user_id, 'must_login_cache_notice_dismissed');
+    delete_user_meta($user_id, 'cfb_must_login_cache_notice_dismissed');
 
     wp_send_json_success(array(
       'enabled' => $new_value === self::STATUS_ENABLED,
       'message' => $new_value === self::STATUS_ENABLED
-        ? __('Login requirement enabled', 'must-login')
-        : __('Login requirement disabled', 'must-login')
+        ? __('Login requirement enabled', 'cfb-must-login')
+        : __('Login requirement disabled', 'cfb-must-login')
     ));
   }
   
@@ -523,32 +526,32 @@ class MustLogin {
    */
   public function enqueue_admin_assets($hook) {
     // Load on settings page, when admin bar is showing, or when user can manage the plugin (for notices)
-    $load_on_pages = array('settings_page_must-login');
+    $load_on_pages = array('settings_page_cfb-must-login');
 
     if (!in_array($hook, $load_on_pages, true) && !is_admin_bar_showing() && !current_user_can(self::CAPABILITY)) {
       return;
     }
     
     wp_enqueue_style(
-      'must-login-admin-style',
-      MUST_LOGIN_PLUGIN_URL . 'assets/css/admin-style.css',
+      'cfb-must-login-admin-style',
+      CFB_MUST_LOGIN_PLUGIN_URL . 'assets/css/admin-style.css',
       array(),
-      MUST_LOGIN_VERSION
+      CFB_MUST_LOGIN_VERSION
     );
     
     wp_enqueue_script(
-      'must-login-admin-script',
-      MUST_LOGIN_PLUGIN_URL . 'assets/js/admin-script.js',
+      'cfb-must-login-admin-script',
+      CFB_MUST_LOGIN_PLUGIN_URL . 'assets/js/admin-script.js',
       array('jquery'),
-      MUST_LOGIN_VERSION,
+      CFB_MUST_LOGIN_VERSION,
       true
     );
-    
-    wp_localize_script('must-login-admin-script', 'mustLoginData', array(
+
+    wp_localize_script('cfb-must-login-admin-script', 'cfbMustLoginData', array(
       'ajaxUrl' => admin_url('admin-ajax.php'),
-      'nonce' => wp_create_nonce('must_login_toggle_nonce'),
+      'nonce' => wp_create_nonce('cfb_must_login_toggle_nonce'),
       'strings' => array(
-        'error' => __('Error toggling status. Please try again.', 'must-login')
+        'error' => __('Error toggling status. Please try again.', 'cfb-must-login')
       )
     ));
   }
@@ -559,25 +562,25 @@ class MustLogin {
   public function enqueue_frontend_assets() {
     if (is_admin_bar_showing() && current_user_can(self::CAPABILITY)) {
       wp_enqueue_style(
-        'must-login-admin-style',
-        MUST_LOGIN_PLUGIN_URL . 'assets/css/admin-style.css',
+        'cfb-must-login-admin-style',
+        CFB_MUST_LOGIN_PLUGIN_URL . 'assets/css/admin-style.css',
         array(),
-        MUST_LOGIN_VERSION
+        CFB_MUST_LOGIN_VERSION
       );
       
       wp_enqueue_script(
-        'must-login-admin-script',
-        MUST_LOGIN_PLUGIN_URL . 'assets/js/admin-script.js',
+        'cfb-must-login-admin-script',
+        CFB_MUST_LOGIN_PLUGIN_URL . 'assets/js/admin-script.js',
         array('jquery'),
-        MUST_LOGIN_VERSION,
+        CFB_MUST_LOGIN_VERSION,
         true
       );
-      
-      wp_localize_script('must-login-admin-script', 'mustLoginData', array(
+
+      wp_localize_script('cfb-must-login-admin-script', 'cfbMustLoginData', array(
         'ajaxUrl' => admin_url('admin-ajax.php'),
-        'nonce' => wp_create_nonce('must_login_toggle_nonce'),
+        'nonce' => wp_create_nonce('cfb_must_login_toggle_nonce'),
         'strings' => array(
-          'error' => __('Error toggling status. Please try again.', 'must-login')
+          'error' => __('Error toggling status. Please try again.', 'cfb-must-login')
         )
       ));
     }
@@ -635,14 +638,16 @@ class MustLogin {
     if (isset($_SERVER['REQUEST_URI'])) {
       $request_uri = sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI']));
     }
-    
+
     // Validate that redirect is to internal URL only
     $redirect_to = home_url($request_uri);
+    // Use wp_validate_redirect to ensure the URL is internal
+    $redirect_to = wp_validate_redirect($redirect_to, home_url());
     $redirect_url = wp_login_url($redirect_to);
-    
+
     // Apply filter to allow customization
-    $redirect_url = apply_filters('must_login_redirect_url', $redirect_url, $redirect_to);
-    
+    $redirect_url = apply_filters('cfb_must_login_redirect_url', $redirect_url, $redirect_to);
+
     wp_safe_redirect($redirect_url);
     exit;
   }
@@ -710,7 +715,7 @@ class MustLogin {
     }
 
     // Allow specific public endpoints
-    $allowed_routes = apply_filters('must_login_allowed_rest_routes', array(
+    $allowed_routes = apply_filters('cfb_must_login_allowed_rest_routes', array(
       // Authentication endpoints
       '/wp/v2/users/me',
       '/jwt-auth/v1/token',
@@ -740,7 +745,7 @@ class MustLogin {
     // Return authentication error
     return new WP_Error(
       'rest_authentication_required',
-      __('Authentication required to access the REST API.', 'must-login'),
+      __('Authentication required to access the REST API.', 'cfb-must-login'),
       array('status' => 401)
     );
   }
@@ -749,7 +754,7 @@ class MustLogin {
    * Add settings link on plugins page
    */
   public function add_settings_link($links) {
-    $settings_link = '<a href="' . esc_url(admin_url('options-general.php?page=must-login')) . '">' . __('Settings', 'must-login') . '</a>';
+    $settings_link = '<a href="' . esc_url(admin_url('options-general.php?page=cfb-must-login')) . '">' . __('Settings', 'cfb-must-login') . '</a>';
     array_unshift($links, $settings_link);
     return $links;
   }
@@ -829,7 +834,7 @@ class MustLogin {
 
     // Check if user has dismissed the notice
     $user_id = get_current_user_id();
-    if (get_user_meta($user_id, 'must_login_cache_notice_dismissed', true)) {
+    if (get_user_meta($user_id, 'cfb_must_login_cache_notice_dismissed', true)) {
       return;
     }
 
@@ -841,12 +846,13 @@ class MustLogin {
 
     $plugin_list = implode(', ', $caching_plugins);
     ?>
-    <div class="notice notice-warning is-dismissible must-login-cache-notice" data-notice="cache-warning">
+    <div class="notice notice-warning is-dismissible cfb-must-login-cache-notice" data-notice="cache-warning">
       <p>
-        <strong><?php esc_html_e('Must Login - Cache Notice:', 'must-login'); ?></strong>
+        <strong><?php esc_html_e('CFB Must Login - Cache Notice:', 'cfb-must-login'); ?></strong>
         <?php
         printf(
-          esc_html__('Login requirement is enabled. We automatically cleared the cache for: %s. If you experience issues with users accessing the site without logging in, try manually clearing your cache.', 'must-login'),
+          /* translators: %s: Comma-separated list of caching plugin names */
+          esc_html__('Login requirement is enabled. We automatically cleared the cache for: %s. If you experience issues with users accessing the site without logging in, try manually clearing your cache.', 'cfb-must-login'),
           '<strong>' . esc_html($plugin_list) . '</strong>'
         );
         ?>
@@ -859,30 +865,30 @@ class MustLogin {
    * AJAX handler to dismiss cache notice
    */
   public function dismiss_cache_notice() {
-    check_ajax_referer('must_login_toggle_nonce', 'nonce');
+    check_ajax_referer('cfb_must_login_toggle_nonce', 'nonce');
 
     if (!current_user_can(self::CAPABILITY)) {
-      wp_send_json_error(array('message' => __('Unauthorized', 'must-login')));
+      wp_send_json_error(array('message' => __('Unauthorized', 'cfb-must-login')));
     }
 
     $user_id = get_current_user_id();
-    update_user_meta($user_id, 'must_login_cache_notice_dismissed', true);
+    update_user_meta($user_id, 'cfb_must_login_cache_notice_dismissed', true);
 
     wp_send_json_success();
   }
 }
 
 // Initialize the plugin
-new MustLogin();
+new CFB_Must_Login();
 
 /**
  * Uninstall hook - only runs when plugin is deleted (not deactivated)
  */
-register_uninstall_hook(__FILE__, 'must_login_uninstall');
+register_uninstall_hook(__FILE__, 'cfb_must_login_uninstall');
 
-function must_login_uninstall() {
+function cfb_must_login_uninstall() {
   // Delete all plugin data on uninstall:
-  delete_option('must_login_require_login');
-  delete_option('must_login_protect_rest_api');
-  delete_option('must_login_version');
+  delete_option('cfb_must_login_require_login');
+  delete_option('cfb_must_login_protect_rest_api');
+  delete_option('cfb_must_login_version');
 }
