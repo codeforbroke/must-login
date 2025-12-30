@@ -25,7 +25,7 @@ jobs:
 
       - name: Copy plugin files
         run: |
-          rsync -av --exclude='.wp-env.json' --exclude='.git' --exclude='.github' --exclude='release' . release/must-login/
+          rsync -av --exclude='.wp-env.json' --exclude='.git' --exclude='.github' --exclude='.wordpress-org' --exclude='release' . release/must-login/
 
       - name: Create zip file
         run: |
