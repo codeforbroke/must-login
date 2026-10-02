@@ -1,172 +1,146 @@
 === CFB Must Login ===
 Contributors: codeforbroke
-Tags: login, private, security, members, rest-api
+Tags: private site, login, members only, intranet, rest-api
 Requires at least: 5.0
-Tested up to: 6.9
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Require users to log in before viewing your site with easy admin toggle controls. Includes REST API protection and automatic cache clearing.
+Put your whole site behind a login with one click. Includes REST API protection and automatic cache clearing.
 
 == Description ==
 
-Must Login is a lightweight, user-friendly plugin that allows you to require login for your entire site with just one click. Perfect for membership sites, private blogs, intranets, or any site that needs to restrict access to registered users only.
+Not every site is meant for the public. A staging site waiting on client sign-off. A company intranet. A members-only community. A family blog.
 
-= Features =
+CFB Must Login puts your entire site behind the WordPress login. Switch it on from the admin bar, and anyone who isn't signed in is sent to the login page, then straight back to the page they wanted once they are.
 
-* **One-Click Toggle** - Enable or disable login requirement instantly from the admin bar
-* **REST API Protection** - Configurable authentication requirement for REST API endpoints
-* **Automatic Cache Clearing** - Automatically clears popular caching plugins when toggling protection
-* **Admin Bar Status Indicator** - Always see at a glance whether login is required
-* **Simple Settings Page** - Easy-to-use settings interface
-* **Admin Override** - Administrators always have access, even when login is required
-* **Smart Redirects** - Users are redirected to login and then back to their intended page
-* **Selective Endpoint Access** - Allow specific REST API endpoints for forms and authentication
-* **Cache Compatibility** - Works with WP Super Cache, W3 Total Cache, WP Rocket, and more
-* **No Configuration Needed** - Works perfectly out of the box
-* **Lightweight** - Minimal impact on site performance
-* **Translation Ready** - Fully internationalized and ready for translation
+= What you get =
 
-= How It Works =
+* **One-click toggle.** Turn the login requirement on or off from the admin bar, on any page.
+* **Status at a glance.** A lock icon in the admin bar always shows whether your site is private.
+* **Smart redirects.** Visitors land back on the page they asked for after logging in.
+* **REST API protection.** Logged-out requests to `/wp-json/` are refused, so your content can't be read through the API. Login, contact form and oEmbed endpoints keep working.
+* **Automatic cache clearing.** Ten popular caching plugins are cleared the moment you toggle, so the change takes effect right away instead of whenever the cache expires.
+* **A simple settings page** under Settings → CFB Must Login.
+* **Lightweight**, translation ready, and extendable with filters and actions.
 
-1. Install and activate the plugin
-2. Click the lock icon in the admin bar to toggle login requirement
-3. That's it! Your site is now protected
+= Good to know =
 
-When enabled, all visitors must log in to view any page on your site. Administrators can quickly toggle this on or off from anywhere on the site using the admin bar.
+* **It starts switched off.** Nothing changes for your visitors until you turn it on.
+* **It's all or nothing, for now.** Version 1.0 protects the entire site. Per-page exclusions may come in a future version.
+* **Search engines can't crawl your site while it's on.** That's usually the point, but remember to switch it off before launch.
+
+= Built by Code For Broke =
+
+CFB Must Login is made and maintained by [Code For Broke](https://codeforbroke.com/), an independent web developer working with marketing teams and small businesses on WordPress and fast, secure websites. Questions and suggestions come straight to me through the [support forum](https://wordpress.org/support/plugin/cfb-must-login/).
+
+= Developer documentation =
+
+**Filter: `cfb_must_login_redirect_url`**
+
+Send logged-out visitors somewhere other than the default login page.
+
+`
+add_filter( 'cfb_must_login_redirect_url', function ( $redirect_url, $redirect_to ) {
+    return 'https://example.com/custom-login';
+}, 10, 2 );
+`
+
+**Filter: `cfb_must_login_allowed_rest_routes`**
+
+Keep additional REST API endpoints open while protection is on.
+
+`
+add_filter( 'cfb_must_login_allowed_rest_routes', function ( $routes ) {
+    $routes[] = '/my-plugin/v1/public';
+    return $routes;
+} );
+`
+
+**Action: `cfb_must_login_clear_cache`**
+
+Runs whenever the plugin clears caches. Hook in to clear a cache it doesn't know about.
+
+`
+add_action( 'cfb_must_login_clear_cache', function () {
+    // Your custom cache clearing.
+} );
+`
+
+**Capability: `cfb_must_login_manage`**
+
+Controls who can change the plugin's settings. It maps to `manage_options` by default; change it with the `map_meta_cap` filter.
 
 == Installation ==
 
-= Automatic Installation =
+1. In your dashboard, go to **Plugins → Add New** and search for "CFB Must Login."
+2. Click **Install Now**, then **Activate**.
+3. Click the lock icon in the admin bar to require login. That's it.
 
-1. Log in to your dashboard
-2. Navigate to Plugins → Add New
-3. Search for "Must Login"
-4. Click "Install Now" and then "Activate"
+To adjust REST API protection, go to **Settings → CFB Must Login**.
 
-= Manual Installation =
-
-1. Download the plugin zip file
-2. Log in to your dashboard
-3. Navigate to Plugins → Add New → Upload Plugin
-4. Choose the zip file and click "Install Now"
-5. Activate the plugin
+To install manually, download the zip, go to **Plugins → Add New → Upload Plugin**, choose the file and click **Install Now**, then **Activate**.
 
 == Frequently Asked Questions ==
 
+= What happens when a logged-out visitor arrives? =
+
+They're sent to the login page. Once they log in, they're returned to the page they were trying to reach.
+
+= What stays public while login is required? =
+
+The login, registration and password reset pages, so people can actually sign in. A few other things stay reachable too:
+
+* **oEmbed**, which can reveal a post's title to anyone who knows its URL.
+* **Media Library files**, for anyone with a direct link, because your web server serves them without loading WordPress.
+
 = Will this affect search engines? =
 
-Yes, when login is required, search engines cannot crawl your site. This is useful for private sites but should be disabled if you want search engine visibility.
+Yes. While login is required, search engines can't crawl your site. That's what you want for a private site, but switch it off before you launch publicly.
 
-= What is REST API protection? =
+= What does REST API protection do? =
 
-REST API protection requires authentication to access WordPress REST API endpoints when login is required. This prevents unauthenticated access to your site's data through the API. You can enable or disable this feature separately in the settings.
+WordPress exposes posts, pages and other data at `/wp-json/`. With protection on, logged-out requests to those endpoints are refused. It's on by default and can be turned off separately under Settings → CFB Must Login.
 
-= Which REST API endpoints are always accessible? =
+= Which REST API endpoints stay open? =
 
-Even with REST API protection enabled, the following endpoints remain accessible:
-* Authentication endpoints (JWT, Simple JWT Login)
-* Contact form endpoints (Contact Form 7, WPForms, Gravity Forms)
-* oEmbed endpoints
+Even with protection on, these keep working:
 
-Developers can allow additional endpoints using the `cfb_must_login_allowed_rest_routes` filter.
+* Login and authentication (JWT Authentication, Simple JWT Login, current-user lookup and registration)
+* Contact forms (Contact Form 7, WPForms, Gravity Forms)
+* oEmbed
 
-= Does this work with caching plugins? =
+Developers can open more with the `cfb_must_login_allowed_rest_routes` filter.
 
-Yes! The plugin automatically detects and clears cache from popular caching plugins including:
-* WP Super Cache
-* W3 Total Cache
-* WP Rocket
-* LiteSpeed Cache
-* WP Fastest Cache
-* Autoptimize
-* Cache Enabler
-* Comet Cache
-* SG Optimizer
-* WP Optimize
+= Does it work with caching plugins? =
 
-When you toggle the login requirement, the cache is automatically cleared to ensure the changes take effect immediately.
+Yes. When you toggle the login requirement, CFB Must Login clears the cache for WP Super Cache, W3 Total Cache, WP Rocket, LiteSpeed Cache, WP Fastest Cache, Autoptimize, Cache Enabler, Comet Cache, SG Optimizer and WP-Optimize. If you use server-level or CDN caching, purge that too.
 
-= Can I exclude certain pages? =
+= Can I keep some pages public? =
 
-Version 1.0.0 requires login for the entire site. Future versions may include page exclusion options.
+Not yet. Version 1.0 requires login for the entire site.
 
-= What happens to users trying to access the site? =
+= Does it work with membership plugins? =
 
-Non-logged-in users are automatically redirected to the login page. After logging in, they're redirected back to the page they were trying to access.
+Yes. It simply makes sure people are logged in. Your membership plugin keeps handling who can see what.
 
-= Does this work with membership plugins? =
+= Can I send visitors to a custom login page? =
 
-Yes! Must Login works alongside membership plugins and simply ensures users are logged in before viewing any content.
-
-= Can I customize the redirect URL? =
-
-Yes, developers can use the `cfb_must_login_redirect_url` filter to customize the redirect URL.
-
-= How do I allow additional REST API endpoints? =
-
-Developers can use the `cfb_must_login_allowed_rest_routes` filter to add custom endpoints to the allowlist:
-
-`
-add_filter('cfb_must_login_allowed_rest_routes', function($routes) {
-    $routes[] = '/my-plugin/v1/public-endpoint';
-    return $routes;
-});
-`
-
-== Screenshots ==
-
-1. Admin bar toggle with status indicator
-2. Simple settings page with REST API protection option
-3. Cache notice when caching plugins are detected
+Yes, with the `cfb_must_login_redirect_url` filter. See the developer documentation above.
 
 == Changelog ==
 
-= 1.0.0 =
-* Initial release
-* One-click toggle via admin bar
-* Configurable REST API protection
-* Automatic cache clearing for popular caching plugins
-* Support for WP Super Cache, W3 Total Cache, WP Rocket, and more
-* Selective REST API endpoint access
-* Admin notices for caching plugins
-* Translation ready
+= 1.0.1 =
 
-== Upgrade Notice ==
+* Fix: RSS feeds now require login while the site is private. Previously they showed full post content to logged-out visitors.
+* Tested with WordPress 7.1.
 
 = 1.0.0 =
-Initial release with full login protection, REST API security, and automatic cache clearing.
 
-== Developer Documentation ==
-
-= Filters =
-
-**cfb_must_login_redirect_url** - Customize the login redirect URL
-`
-add_filter('cfb_must_login_redirect_url', function($redirect_url, $redirect_to) {
-    return 'https://example.com/custom-login';
-}, 10, 2);
-`
-
-**cfb_must_login_allowed_rest_routes** - Allow additional REST API endpoints
-`
-add_filter('cfb_must_login_allowed_rest_routes', function($routes) {
-    $routes[] = '/my-plugin/v1/public';
-    return $routes;
-});
-`
-
-= Actions =
-
-**cfb_must_login_clear_cache** - Triggered when cache is cleared
-`
-add_action('cfb_must_login_clear_cache', function() {
-    // Custom cache clearing logic
-});
-`
-
-= Capabilities =
-
-The plugin uses the `cfb_must_login_manage` capability, which is mapped to `manage_options` by default. You can customize this using the `map_meta_cap` filter.
+* Initial release.
+* One-click toggle in the admin bar.
+* Configurable REST API protection with selective endpoint access.
+* Automatic cache clearing for popular caching plugins, with admin notices.
+* Translation ready.
