@@ -3,7 +3,7 @@
  * Plugin Name: CFB Must Login
  * Plugin URI: https://github.com/codeforbroke/must-login
  * Description: Require users to log in before viewing your site with easy admin toggle controls
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Code For Broke, Inc.
  * Author URI: https://codeforbroke.com
  * License: GPL v2 or later
@@ -20,7 +20,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('CFB_MUST_LOGIN_VERSION', '1.0.0');
+define('CFB_MUST_LOGIN_VERSION', '1.0.1');
 define('CFB_MUST_LOGIN_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CFB_MUST_LOGIN_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('CFB_MUST_LOGIN_PLUGIN_BASENAME', plugin_basename(__FILE__));
@@ -434,7 +434,7 @@ class CFB_Must_Login {
             <li><?php esc_html_e('Non-logged-in users are redirected to the login page', 'cfb-must-login'); ?></li>
             <li><?php esc_html_e('Quick toggle available in the admin bar', 'cfb-must-login'); ?></li>
             <li><?php esc_html_e('REST API protection can be enabled/disabled separately', 'cfb-must-login'); ?></li>
-            <li><?php esc_html_e('RSS feeds and XML-RPC remain accessible', 'cfb-must-login'); ?></li>
+            <li><?php esc_html_e('XML-RPC remains accessible', 'cfb-must-login'); ?></li>
           </ul>
 
           <h3><?php esc_html_e('REST API Protection', 'cfb-must-login'); ?></h3>
@@ -599,12 +599,7 @@ class CFB_Must_Login {
     if (!$this->is_login_required()) {
       return;
     }
-    
-    // Skip for RSS feeds
-    if (is_feed()) {
-      return;
-    }
-    
+
     // Skip if on login page or related pages
     $allowed_pages = array('wp-login.php', 'wp-register.php');
     $current_page = isset($_SERVER['PHP_SELF']) ? basename(sanitize_text_field(wp_unslash($_SERVER['PHP_SELF']))) : '';
